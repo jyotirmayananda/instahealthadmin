@@ -2,7 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['images.unsplash.com', 'api.qrserver.com'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'api.qrserver.com' },
+      { protocol: 'https', hostname: '**.supabase.co' },
+    ],
   },
 };
 
