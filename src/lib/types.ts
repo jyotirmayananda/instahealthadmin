@@ -41,6 +41,16 @@ export interface DoctorPermissions {
   emergencyOnCall: boolean;
 }
 
+export interface PlatformConsultationPricing {
+  videoFee: number;
+  audioFee: number;
+  chatFee: number;
+  currency: string;
+  currencySymbol: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
 export interface AdminDoctor {
   id: string;
   name: string;
@@ -52,6 +62,9 @@ export interface AdminDoctor {
   experienceYears: number;
   hospitalAffiliation: string;
   consultFee: number;
+  videoFee?: number;
+  audioFee?: number;
+  chatFee?: number;
   rating: number;
   totalConsults: number;
   status: DoctorAccessStatus;
@@ -59,6 +72,7 @@ export interface AdminDoctor {
   joinedAt: string;
   verifiedAt?: string;
   avatarUrl?: string;
+  documents?: string[];
 }
 
 export type RiderStatus = 'available' | 'delivering' | 'offline' | 'pending_approval';
@@ -117,10 +131,17 @@ export interface AdminPrescription {
   id: string;
   patientName: string;
   phone: string;
+  patientAge?: number;
   fileName: string;
+  fileUrl?: string;
+  targetRole?: 'doctor' | 'nurse' | 'pharmacist' | 'all';
+  targetProviderName?: string;
   uploadedAt: string;
   status: PrescriptionStatus;
+  notes?: string;
   linkedOrderId?: string;
+  verifiedBy?: string;
+  auditNotes?: string;
 }
 
 export interface AdminLab {
@@ -135,6 +156,9 @@ export interface AdminLab {
   status: LabStatus;
   phlebotomist?: string;
   phlebotomistId?: string;
+  reportUrl?: string;
+  reportFileName?: string;
+  reportUploadedAt?: string;
 }
 
 export interface AdminConsult {
@@ -214,6 +238,7 @@ export interface AdminMedicine {
   expiryDate: string;
   description: string;
   imageUrl?: string;
+  images?: string[];
   storageConditions?: string;
   sideEffects?: string;
   addedAt?: string;

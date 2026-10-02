@@ -20,6 +20,7 @@ import type {
   ConsultStatus,
   DoctorAccessStatus,
   DoctorPermissions,
+  PlatformConsultationPricing,
   FleetStatus,
   KycStatus,
   LabStatus,
@@ -89,8 +90,9 @@ interface AdminContextValue {
   riders: AdminDeliveryRider[];
   counts: AdminCounts;
   setOrderStatus: (id: string, status: OrderStatus) => void;
-  setPrescriptionStatus: (id: string, status: PrescriptionStatus) => void;
+  setPrescriptionStatus: (id: string, status: PrescriptionStatus, auditNotes?: string) => void;
   setLabStatus: (id: string, status: LabStatus) => void;
+  uploadLabReport: (id: string, reportUrl: string, fileName?: string) => void;
   assignPhlebo: (id: string, name: string, phleboId?: string) => void;
   setConsultStatus: (id: string, status: ConsultStatus) => void;
   assignDoctor: (id: string, doctorName: string, doctorId?: string, specialty?: string) => void;
@@ -113,12 +115,15 @@ interface AdminContextValue {
   setFleetStatus: (id: string, status: FleetStatus) => void;
   processPayout: (id: string) => void;
 
-  // Doctor Access Management
+  // Doctor Access & Platform Consultation Pricing
+  consultationPricing: PlatformConsultationPricing;
+  updateConsultationPricing: (pricing: Partial<PlatformConsultationPricing>) => Promise<void>;
   setDoctorStatus: (id: string, status: DoctorAccessStatus) => void;
   updateDoctorPermissions: (id: string, perms: Partial<DoctorPermissions>) => void;
   addDoctor: (doctor: Omit<AdminDoctor, 'id' | 'joinedAt' | 'totalConsults' | 'rating'>) => void;
   approveDoctor: (id: string) => void;
   rejectDoctor: (id: string) => void;
+  removeDoctor: (id: string) => void;
 
   // Nurse & Staff Approval
   approveNurse: (id: string) => void;
@@ -163,6 +168,15 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [settlements, setSettlements] = useState(SEED_SETTLEMENTS);
   const [doctors, setDoctors] = useState(SEED_DOCTORS);
   const [riders, setRiders] = useState(SEED_RIDERS);
+  const [consultationPricing, setConsultationPricing] = useState<PlatformConsultationPricing>({
+    videoFee: 499,
+    audioFee: 299,
+    chatFee: 149,
+    currency: 'INR',
+    currencySymbol: '₹',
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'Admin Board',
+  });
 
   const counts = useMemo<AdminCounts>(
     () => ({
@@ -230,7 +244,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
                     councilRegNo: reg.councilRegNo || 'REG-PENDING',
                     experienceYears: 6,
                     hospitalAffiliation: reg.hospital || 'InstaHealth Network Clinic',
-                    consultFee: 500,
+                    consultFee: reg.videoFee ? Number(reg.videoFee) : (reg.consultFee ? Number(reg.consultFee) : 500),
+                    videoFee: reg.videoFee ? Number(reg.videoFee) : 500,
+                    audioFee: reg.audioFee ? Number(reg.audioFee) : 300,
+                    chatFee: reg.chatFee ? Number(reg.chatFee) : 200,
                     rating: 5.0,
                     totalConsults: 0,
                     status: reg.status || 'pending_approval',
@@ -242,6 +259,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
                       emergencyOnCall: false,
                     },
                     joinedAt: reg.submittedAt || 'Today',
+                    documents: reg.documents || [
+                      'Medical Council Registration Certificate',
+                      'State Medical License',
+                      'MBBS / MD Degree',
+                    ],
                   },
                   ...prev,
                 ];
@@ -317,6 +339,28 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         // Handled silently
+      }
+
+      // 1b. Fetch Centralized Consultation Pricing
+      try {
+        const pRes = await fetch('/api/consultation-pricing');
+        const pJson = await pRes.json();
+        if (pJson.success && pJson.data) {
+          setConsultationPricing(pJson.data);
+        }
+      } catch (err) {
+        // Silent fallback
+      }
+
+      // 1c. Fetch Centralized Prescriptions
+      try {
+        const rxRes = await fetch('/api/prescriptions');
+        const rxJson = await rxRes.json();
+        if (rxJson.success && Array.isArray(rxJson.data) && rxJson.data.length > 0) {
+          setPrescriptions(rxJson.data);
+        }
+      } catch (err) {
+        // Silent fallback
       }
 
       // 2. Direct Supabase Query for Provider KYC (including Delivery Partners)
@@ -689,12 +733,23 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ status }),
       }).catch(() => {});
     },
-    setPrescriptionStatus: (id, status) => {
-      setPrescriptions((rows) => rows.map((r) => (r.id === id ? { ...r, status } : r)));
+    setPrescriptionStatus: (id, status, auditNotes) => {
+      setPrescriptions((rows) =>
+        rows.map((r) =>
+          r.id === id
+            ? { ...r, status, auditNotes: auditNotes || r.auditNotes, verifiedBy: 'Admin Clinical Auditor' }
+            : r
+        )
+      );
+      fetch('/api/prescriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, auditNotes, verifiedBy: 'Admin Clinical Auditor' }),
+      }).catch(() => {});
       fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://instahealthbackend.onrender.com/api'}/prescriptions/${id}/verify`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, notes: auditNotes, auditNotes }),
       }).catch(() => {});
     },
     setLabStatus: (id, status) => {
@@ -703,6 +758,32 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
+      }).catch(() => {});
+    },
+    uploadLabReport: (id, reportUrl, fileName) => {
+      const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      setLabs((rows) =>
+        rows.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: 'report_ready',
+                reportUrl,
+                reportFileName: fileName || 'Diagnostic_Lab_Report.pdf',
+                reportUploadedAt: `Today, ${now}`,
+              }
+            : r
+        )
+      );
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://instahealthbackend.onrender.com/api'}/labs/bookings/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'report_ready',
+          reportAvailable: true,
+          reportUrl,
+          reportFileName: fileName || 'Diagnostic_Lab_Report.pdf',
+        }),
       }).catch(() => {});
     },
     assignPhlebo: (id, name, phleboId) =>
@@ -931,6 +1012,30 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: 'rejected' }),
       }).catch(() => {});
+    },
+    removeDoctor: (id: string) => {
+      setDoctors((rows) => rows.filter((r) => r.id !== id));
+      fetch('/api/registrations', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      }).catch(() => {});
+    },
+    consultationPricing,
+    updateConsultationPricing: async (pricing: Partial<PlatformConsultationPricing>) => {
+      try {
+        const res = await fetch('/api/consultation-pricing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pricing),
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          setConsultationPricing(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to update consultation pricing:', err);
+      }
     },
     approveNurse: (id: string) => {
       setProviders((rows) =>

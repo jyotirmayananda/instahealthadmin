@@ -35,7 +35,6 @@ const GROUPS = [
       { href: '/orders', label: 'Medicine Orders', icon: ShoppingBag, countKey: 'pendingOrders' as const },
       { href: '/prescriptions', label: 'Prescriptions', icon: FileText, countKey: 'pendingRx' as const },
       { href: '/labs', label: 'Lab Bookings', icon: TestTube, countKey: 'openLabs' as const },
-      { href: '/consultations', label: 'Consultations', icon: Video, countKey: 'liveConsults' as const },
       { href: '/nursing', label: 'Home Nursing', icon: HeartPulse, countKey: 'openNursing' as const },
     ],
   },

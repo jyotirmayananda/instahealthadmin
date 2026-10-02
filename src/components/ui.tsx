@@ -203,18 +203,18 @@ export function KpiCard({
           </div>
         )}
       </div>
-      <div className="mt-3">
+      <div className="my-2.5 flex items-center gap-2.5">
         <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{value}</p>
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-          {trend && (
-            <span className="inline-flex items-center text-emerald-600 font-semibold gap-0.5">
-              <TrendingUp size={12} />
-              {trend}
-            </span>
-          )}
-          {hint && <span>{hint}</span>}
-        </div>
+        {trend && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-xs font-bold whitespace-nowrap shadow-xs">
+            <TrendingUp size={12} className="text-emerald-600 shrink-0" />
+            <span>{trend}</span>
+          </span>
+        )}
       </div>
+      {hint && (
+        <p className="text-xs text-slate-500 font-medium">{hint}</p>
+      )}
     </div>
   );
 }

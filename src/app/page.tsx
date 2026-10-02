@@ -28,19 +28,18 @@ import { useAdmin } from '@/lib/admin-context';
 import { StatusBadge, KpiCard } from '@/components/ui';
 
 const MODULES = [
-  { href: '/doctors', label: 'Doctor Access & KYC', desc: 'Credentials, video/Rx permissions', icon: UserCheck, key: 'pendingDoctors' as const, color: 'text-teal-700 bg-teal-50 border-teal-200' },
-  { href: '/orders', label: 'Medicine Orders & GPS', desc: 'Assign riders, pack, live tracking', icon: ShoppingBag, key: 'pendingOrders' as const, color: 'text-sky-700 bg-sky-50 border-sky-200' },
-  { href: '/dispatch', label: 'Fleet & Dispatch Desk', desc: 'Riders, phlebos & nurses live', icon: MapPin, key: 'availableRiders' as const, color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-  { href: '/prescriptions', label: 'Prescriptions Audit', desc: 'Verify or reject uploaded Rx', icon: FileText, key: 'pendingRx' as const, color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  { href: '/labs', label: 'Lab Test Bookings', desc: 'Assign phlebo, mark reports', icon: TestTube, key: 'openLabs' as const, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  { href: '/consultations', label: 'Telehealth Consults', desc: 'Live queues & doctor rooms', icon: Video, key: 'liveConsults' as const, color: 'text-violet-700 bg-violet-50 border-violet-200' },
-  { href: '/nursing', label: 'Home Nursing Care', desc: 'Assign nurse, close visits', icon: HeartPulse, key: 'openNursing' as const, color: 'text-rose-700 bg-rose-50 border-rose-200' },
-  { href: '/patients', label: 'Patient Directory', desc: 'EHR records, safety status', icon: UserRound, key: 'activePatients' as const, color: 'text-teal-700 bg-teal-50 border-teal-200' },
-  { href: '/providers', label: 'Staff Registration', desc: 'Approve medical councils', icon: Users, key: 'pendingKyc' as const, color: 'text-purple-700 bg-purple-50 border-purple-200' },
-  { href: '/medicines', label: 'Medicine Inventory', desc: 'Stock alerts & batch codes', icon: Pill, key: 'totalMedicines' as const, color: 'text-cyan-700 bg-cyan-50 border-cyan-200' },
-  { href: '/catalog', label: 'Catalog & Tariffs', desc: 'Test tariffs, procedure rates', icon: Layers, color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  { href: '/coupons', label: 'Promotions & Codes', desc: 'Seasonal discounts & limits', icon: Ticket, color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  { href: '/finance', label: 'Payout Settlements', desc: 'Doctor & courier disbursements', icon: DollarSign, key: 'pendingPayouts' as const, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+  { href: '/doctors', label: 'Doctor Access & KYC', icon: UserCheck, key: 'pendingDoctors' as const, color: 'text-teal-600' },
+  { href: '/orders', label: 'Medicine Orders & GPS', icon: ShoppingBag, key: 'pendingOrders' as const, color: 'text-sky-600' },
+  { href: '/dispatch', label: 'Fleet & Dispatch Desk', icon: MapPin, key: 'availableRiders' as const, color: 'text-indigo-600' },
+  { href: '/prescriptions', label: 'Prescriptions Audit', icon: FileText, key: 'pendingRx' as const, color: 'text-amber-600' },
+  { href: '/labs', label: 'Lab Test Bookings', icon: TestTube, key: 'openLabs' as const, color: 'text-emerald-600' },
+  { href: '/nursing', label: 'Home Nursing Care', icon: HeartPulse, key: 'openNursing' as const, color: 'text-rose-600' },
+  { href: '/patients', label: 'Patient Directory', icon: UserRound, key: 'activePatients' as const, color: 'text-teal-600' },
+  { href: '/providers', label: 'Staff Registration', icon: Users, key: 'pendingKyc' as const, color: 'text-purple-600' },
+  { href: '/medicines', label: 'Medicine Inventory', icon: Pill, key: 'totalMedicines' as const, color: 'text-cyan-600' },
+  { href: '/catalog', label: 'Catalog & Tariffs', icon: Layers, color: 'text-blue-600' },
+  { href: '/coupons', label: 'Promotions & Codes', icon: Ticket, color: 'text-amber-600' },
+  { href: '/finance', label: 'Payout Settlements', icon: DollarSign, key: 'pendingPayouts' as const, color: 'text-emerald-600' },
 ];
 
 interface InboxItem {
@@ -113,14 +112,6 @@ export default function AdminOverviewPage() {
         status: n.status,
         tag: 'Home Care',
       })),
-      ...consults.filter((c) => c.status === 'scheduled' || c.status === 'live').map((c) => ({
-        id: `consult-${c.id}`,
-        href: '/consultations',
-        title: `${c.type.toUpperCase()} Consult: ${c.id}`,
-        detail: `${c.patientName} with ${c.doctorName}`,
-        status: c.status,
-        tag: 'Telehealth',
-      })),
     ];
 
     const seen = new Set<string>();
@@ -136,27 +127,10 @@ export default function AdminOverviewPage() {
   return (
     <div className="space-y-8">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              InstaHealth Central Command
-            </h1>
-            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
-              Live Hub
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Doctor credential authorization, real-time medicine delivery tracking, dispatch desks, and clinical operations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200/80 shadow-xs text-xs text-slate-700 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Facility: <strong className="text-teal-700">NCR Central &amp; Expressways Hub</strong></span>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          InstaHealth Central Command
+        </h1>
       </div>
 
       {/* KPI Row */}
@@ -210,30 +184,25 @@ export default function AdminOverviewPage() {
               <Link
                 key={m.href}
                 href={m.href}
-                className="group bg-white border border-slate-200/80 rounded-2xl p-4 hover:border-teal-500/50 hover:shadow-card-hover transition-all flex items-start justify-between gap-3 shadow-card"
+                className="group bg-white border border-slate-200/80 rounded-2xl p-4 hover:border-teal-500/50 hover:shadow-card-hover transition-all flex items-center justify-between gap-3 shadow-card"
               >
-                <div className="flex items-start gap-3.5 min-w-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${m.color}`}>
-                    <Icon size={18} />
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className={`w-9 h-9 flex items-center justify-center shrink-0 ${m.color}`}>
+                    <Icon size={22} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition">
-                      {m.label}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">{m.desc}</p>
-                  </div>
+                  <p className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition truncate">
+                    {m.label}
+                  </p>
                 </div>
 
-                <div className="text-right shrink-0 flex flex-col items-end justify-between h-10">
-                  {count !== undefined ? (
-                    <span className="text-base font-extrabold text-slate-900 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/60 font-mono">
+                <div className="text-right shrink-0 flex items-center gap-2.5">
+                  {count !== undefined && (
+                    <span className="text-base font-extrabold text-slate-900 bg-slate-50 px-2.5 py-0.5 rounded-lg border border-slate-200/60 font-mono">
                       {count}
                     </span>
-                  ) : (
-                    <span />
                   )}
                   <ArrowRight
-                    size={14}
+                    size={16}
                     className="text-slate-300 group-hover:text-teal-600 group-hover:translate-x-0.5 transition"
                   />
                 </div>

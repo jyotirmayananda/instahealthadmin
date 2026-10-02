@@ -1,23 +1,19 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { UserCheck, AlertCircle, MapPin, Calendar, HeartPulse } from 'lucide-react';
+import {
+  UserCheck,
+  AlertCircle,
+  MapPin,
+  Calendar,
+  HeartPulse,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 import { useAdmin } from '@/lib/admin-context';
-import type { AdminNursing, NursingStatus } from '@/lib/types';
+import type { AdminNursing } from '@/lib/types';
 import { ActionButton, EmptyNote, FilterBar, PageHeader, StatusBadge } from '@/components/ui';
 import AssignStaffModal from '@/components/AssignStaffModal';
-
-const NEXT: Partial<Record<NursingStatus, NursingStatus>> = {
-  nurse_assigned: 'on_the_way',
-  on_the_way: 'in_progress',
-  in_progress: 'completed',
-};
-
-const NEXT_LABEL: Partial<Record<NursingStatus, string>> = {
-  nurse_assigned: 'Mark On The Way',
-  on_the_way: 'Start Clinical Visit',
-  in_progress: 'Complete & Bill Visit',
-};
 
 export default function NursingPage() {
   const { nursing, setNursingStatus } = useAdmin();
@@ -49,7 +45,7 @@ export default function NursingPage() {
     <div className="space-y-6">
       <PageHeader
         title="Home Nursing & Clinical Visits Desk"
-        subtitle="Assign certified nurses, track home aseptic care, and manage pay-after-service billing."
+        subtitle="Assign certified nurses to patient visits and manage cancellations. Clinical care, consumables tally, and final bill amount are generated at the doorstep by the nurse in the Medco Provider App."
         right={
           <div className="flex items-center gap-2">
             {unassignedCount > 0 && (
@@ -64,6 +60,26 @@ export default function NursingPage() {
           </div>
         }
       />
+
+      {/* Governance & Doorstep Billing Notice Banner */}
+      <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+            <HeartPulse size={16} />
+          </div>
+          <div className="text-xs">
+            <span className="font-bold text-slate-900 block sm:inline mr-2">
+              Doorstep Billing &amp; Dispatch Governance:
+            </span>
+            <span className="text-slate-600">
+              Admin is authorized to assign nurses and cancel visits only. Procedure execution, consumables tallying, final bill amount generation, and payment collection are conducted at the doorstep by the nurse in the Medco Provider App.
+            </span>
+          </div>
+        </div>
+        <span className="shrink-0 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden md:inline-block">
+          Doorstep Billed
+        </span>
+      </div>
 
       <FilterBar
         query={query}
@@ -106,8 +122,23 @@ export default function NursingPage() {
                     </p>
                   </div>
                   <div className="sm:text-right">
-                    <p className="text-lg font-extrabold text-slate-900">₹{n.billed}</p>
-                    <p className="text-[10px] text-slate-400 font-mono">Pay After Service</p>
+                    {n.status === 'completed' ? (
+                      <>
+                        <p className="text-lg font-extrabold text-slate-900">₹{n.billed}</p>
+                        <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 sm:justify-end">
+                          <CheckCircle2 size={11} /> Generated &amp; Paid at Doorstep
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                          <span>Doorstep Billing</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Amount generated during visit by nurse
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -129,11 +160,11 @@ export default function NursingPage() {
                   </div>
                 </div>
 
-                {/* Staff Assignment Bar */}
+                {/* Staff Assignment Bar - Admin can Assign / Reassign */}
                 <div className="p-3 rounded-2xl bg-rose-50/30 border border-rose-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   {n.nurse ? (
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xs">
+                      <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xs shrink-0">
                         {n.nurse.charAt(0)}
                       </div>
                       <div>
@@ -169,18 +200,57 @@ export default function NursingPage() {
                   </div>
                 </div>
 
-                {/* Workflow Transitions */}
-                <div className="flex flex-wrap gap-2 justify-end pt-1 border-t border-slate-100">
-                  {NEXT[n.status] && (
-                    <ActionButton tone="good" onClick={() => setNursingStatus(n.id, NEXT[n.status]!)}>
-                      {NEXT_LABEL[n.status]}
-                    </ActionButton>
-                  )}
-                  {!isComplete && (
-                    <ActionButton tone="danger" onClick={() => setNursingStatus(n.id, 'cancelled')}>
-                      Cancel Visit
-                    </ActionButton>
-                  )}
+                {/* Workflow Transitions - Admin can ONLY cancel visit; Nurse handles visit execution & billing */}
+                <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 text-xs">
+                    {n.status === 'confirmed' && (
+                      <div className="flex items-center gap-2 text-amber-700">
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        <span className="font-semibold">Awaiting Nurse Assignment by Admin</span>
+                      </div>
+                    )}
+                    {n.status === 'nurse_assigned' && (
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <span className="w-2 h-2 rounded-full bg-sky-400" />
+                        <span className="font-semibold">{n.nurse} Assigned • Awaiting departure in Nurse App</span>
+                      </div>
+                    )}
+                    {n.status === 'on_the_way' && (
+                      <div className="flex items-center gap-2 text-sky-700">
+                        <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+                        <span className="font-semibold">Nurse On The Way to Patient Doorstep</span>
+                      </div>
+                    )}
+                    {n.status === 'in_progress' && (
+                      <div className="flex items-center gap-2 text-rose-700">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+                        </span>
+                        <span className="font-semibold">Clinical Procedure &amp; Vitals In Progress at Doorstep</span>
+                      </div>
+                    )}
+                    {n.status === 'completed' && (
+                      <div className="flex items-center gap-2 text-emerald-700">
+                        <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                        <span className="font-semibold">Visit Completed • Bill Generated &amp; Paid at Doorstep</span>
+                      </div>
+                    )}
+                    {n.status === 'cancelled' && (
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <XCircle size={14} className="text-slate-400 shrink-0" />
+                        <span className="font-semibold">Visit Cancelled</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    {!isComplete && (
+                      <ActionButton tone="danger" onClick={() => setNursingStatus(n.id, 'cancelled')}>
+                        Cancel Visit
+                      </ActionButton>
+                    )}
+                  </div>
                 </div>
               </div>
             );

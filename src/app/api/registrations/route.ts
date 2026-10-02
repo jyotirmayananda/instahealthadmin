@@ -45,6 +45,7 @@ export async function GET() {
         name: row.name,
         phone: row.phone || '',
         email: row.email || '',
+        profilePhoto: row.profile_photo || null,
         councilRegNo: row.council_reg_no || '',
         qualification: row.qualification || '',
         vehicleType: 'Electric Bike',
@@ -89,6 +90,13 @@ export async function POST(req: NextRequest) {
       qualification: body.qualification || `${body.vehicleType || 'Electric Bike'} • ${body.vehicleNumber || 'UP-16-EV-9901'}`,
       specialty: body.specialty || '',
       hospital: body.hospital || '',
+      videoFee: body.videoFee ? Number(body.videoFee) : 500,
+      audioFee: body.audioFee ? Number(body.audioFee) : 300,
+      chatFee: body.chatFee ? Number(body.chatFee) : 200,
+      consultFee: body.videoFee ? Number(body.videoFee) : (body.consultFee ? Number(body.consultFee) : 500),
+      profilePhoto: body.profilePhoto || null,
+      aadhaarDoc: body.aadhaarDoc || null,
+      councilCert: body.councilCert || null,
       vehicleType: body.vehicleType || 'Electric Bike',
       vehicleNumber: body.vehicleNumber || 'UP-16-EV-9901',
       zone: body.zone || 'Sector 62 / Indirapuram Corridor',
@@ -111,6 +119,7 @@ export async function POST(req: NextRequest) {
         email: newRecord.email,
         council_reg_no: newRecord.councilRegNo,
         qualification: newRecord.qualification,
+        profile_photo: newRecord.profilePhoto,
         status: 'pending',
         documents: newRecord.documents,
       });
@@ -191,6 +200,48 @@ export async function PATCH(req: NextRequest) {
       console.warn('Could not update Supabase registration status:', supErr);
     }
 
+    // Sync to shared/doctors.json if doctor approved
+    if (updatedRecord && (status === 'active' || status === 'verified') && updatedRecord.role === 'doctor') {
+      try {
+        const DOCTORS_FILE = path.resolve(process.cwd(), '../shared/doctors.json');
+        let docsList: any[] = [];
+        if (fs.existsSync(DOCTORS_FILE)) {
+          docsList = JSON.parse(fs.readFileSync(DOCTORS_FILE, 'utf-8'));
+        }
+        const existingIdx = docsList.findIndex(
+          (d: any) => d.id === updatedRecord.id || d.name?.toLowerCase() === updatedRecord.name?.toLowerCase()
+        );
+        const newDocEntry = {
+          id: updatedRecord.id,
+          name: updatedRecord.name?.startsWith('Dr.') ? updatedRecord.name : `Dr. ${updatedRecord.name}`,
+          specialty: updatedRecord.specialty || 'General Physician',
+          qualification: updatedRecord.qualification || 'MBBS, MD',
+          experienceYears: 7,
+          rating: 4.9,
+          reviewCount: 15,
+          consultationFee: updatedRecord.videoFee || updatedRecord.consultFee || 500,
+          videoFee: updatedRecord.videoFee || 500,
+          audioFee: updatedRecord.audioFee || 300,
+          chatFee: updatedRecord.chatFee || 200,
+          isLiveNow: true,
+          imageUrl: updatedRecord.profilePhoto || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=300&auto=format&fit=crop&q=80',
+          languages: ['English', 'Hindi'],
+          hospital: updatedRecord.hospital || 'Medco Network Clinic',
+          nextAvailableSlot: 'Available Now (Live)',
+          about: `Experienced ${updatedRecord.specialty || 'General Physician'} dedicated to patient care and teleconsultations.`,
+        };
+        if (existingIdx >= 0) {
+          docsList[existingIdx] = { ...docsList[existingIdx], ...newDocEntry };
+        } else {
+          docsList.unshift(newDocEntry);
+        }
+        fs.mkdirSync(path.dirname(DOCTORS_FILE), { recursive: true });
+        fs.writeFileSync(DOCTORS_FILE, JSON.stringify(docsList, null, 2), 'utf-8');
+      } catch (docSyncErr) {
+        console.warn('Could not sync approved doctor to shared/doctors.json:', docSyncErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: `Registration status updated to ${status}`,
@@ -203,3 +254,35 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Registration ID is required' }, { status: 400 });
+    }
+
+    const localList = readLocalRegistrations();
+    const filtered = localList.filter((r: any) => r.id !== id && r.councilRegNo !== id);
+    writeLocalRegistrations(filtered);
+
+    try {
+      await supabase.from('provider_kyc').delete().or(`id.eq.${id},council_reg_no.eq.${id}`);
+    } catch (supErr) {
+      console.warn('Could not delete from Supabase provider_kyc:', supErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Registration removed successfully',
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, error: err.message || 'Failed to remove registration' },
+      { status: 400 }
+    );
+  }
+}
+

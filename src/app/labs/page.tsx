@@ -1,11 +1,24 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { UserCheck, UserPlus, AlertCircle, MapPin, Calendar, Clock, TestTube } from 'lucide-react';
+import {
+  UserCheck,
+  UserPlus,
+  AlertCircle,
+  MapPin,
+  Calendar,
+  Clock,
+  TestTube,
+  FileCheck,
+  Download,
+  Upload,
+  ExternalLink,
+} from 'lucide-react';
 import { useAdmin } from '@/lib/admin-context';
 import type { AdminLab, LabStatus } from '@/lib/types';
 import { ActionButton, EmptyNote, FilterBar, PageHeader, StatusBadge } from '@/components/ui';
 import AssignStaffModal from '@/components/AssignStaffModal';
+import UploadLabReportModal from '@/components/UploadLabReportModal';
 
 const NEXT: Partial<Record<LabStatus, LabStatus>> = {
   phlebotomist_assigned: 'on_the_way',
@@ -18,16 +31,19 @@ const NEXT_LABEL: Partial<Record<LabStatus, string>> = {
   phlebotomist_assigned: 'Mark On The Way',
   on_the_way: 'Sample Collected',
   sample_collected: 'Send to Lab Processing',
-  processing_in_lab: 'Release Report Ready',
+  processing_in_lab: 'Upload & Release Report',
 };
 
 export default function LabsPage() {
-  const { labs, setLabStatus } = useAdmin();
+  const { labs, setLabStatus, uploadLabReport } = useAdmin();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('open');
 
   // Modal for assigning phlebotomist
   const [assigningLab, setAssigningLab] = useState<AdminLab | null>(null);
+
+  // Modal for uploading lab report
+  const [uploadingLab, setUploadingLab] = useState<AdminLab | null>(null);
 
   const rows = useMemo(() => {
     return labs.filter((l) => {
@@ -173,9 +189,59 @@ export default function LabsPage() {
                   </div>
                 </div>
 
+                {/* Released Report Card when report_ready */}
+                {l.status === 'report_ready' && (
+                  <div className="p-3.5 bg-emerald-50/60 rounded-2xl border border-emerald-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-xs">
+                        <FileCheck size={18} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-emerald-950">
+                            Verified Digital Lab Report Released
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                            Customer Ready
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                          {l.reportFileName || 'Diagnostic_Lab_Report.pdf'} •{' '}
+                          {l.reportUploadedAt || 'Available on customer portal'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                      <a
+                        href={l.reportUrl || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={l.reportFileName || 'Diagnostic_Lab_Report.pdf'}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Download size={13} />
+                        <span>Download / Preview PDF</span>
+                      </a>
+                      <button
+                        onClick={() => setUploadingLab(l)}
+                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold transition shadow-xs"
+                      >
+                        Replace Report
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Workflow Transitions */}
                 <div className="flex flex-wrap gap-2 justify-end pt-1 border-t border-slate-100">
-                  {NEXT[l.status] && (
+                  {l.status === 'processing_in_lab' && (
+                    <ActionButton tone="primary" onClick={() => setUploadingLab(l)}>
+                      <Upload size={14} className="mr-1 inline" />
+                      Upload &amp; Release Report
+                    </ActionButton>
+                  )}
+                  {NEXT[l.status] && l.status !== 'processing_in_lab' && (
                     <ActionButton tone="good" onClick={() => setLabStatus(l.id, NEXT[l.status]!)}>
                       {NEXT_LABEL[l.status]}
                     </ActionButton>
@@ -203,6 +269,21 @@ export default function LabsPage() {
           slot={assigningLab.slot}
           currentAssignee={assigningLab.phlebotomist}
           onClose={() => setAssigningLab(null)}
+        />
+      )}
+
+      {/* Upload Lab Report Modal */}
+      {uploadingLab && (
+        <UploadLabReportModal
+          bookingId={uploadingLab.id}
+          patientName={uploadingLab.patientName}
+          tests={uploadingLab.tests}
+          existingReportUrl={uploadingLab.reportUrl}
+          existingFileName={uploadingLab.reportFileName}
+          onClose={() => setUploadingLab(null)}
+          onUpload={(reportUrl, fileName) => {
+            uploadLabReport(uploadingLab.id, reportUrl, fileName);
+          }}
         />
       )}
     </div>

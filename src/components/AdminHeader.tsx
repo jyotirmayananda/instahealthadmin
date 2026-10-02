@@ -279,14 +279,7 @@ export default function AdminHeader({ onMenu }: { onMenu?: () => void }) {
           </kbd>
         </div>
 
-        {/* Live Ops Indicator */}
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-semibold">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="hidden sm:inline">
-            Live Ops • {counts.availableFleet} Fleet Free • {counts.pendingOrders} Open Orders
-          </span>
-          <span className="sm:hidden">Live Ops</span>
-        </div>
+
       </div>
 
       <div className="flex items-center gap-2.5 sm:gap-3">
