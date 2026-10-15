@@ -27,6 +27,28 @@ function writeLocalRegistrations(data: any[]) {
   }
 }
 
+function normalizePhone(phone?: string | null) {
+  return String(phone || '').replace(/\D/g, '').slice(-10);
+}
+
+/** One row per phone/id — newest submitted_at wins (avoids pending/rejected flicker). */
+function dedupeRegistrations(rows: any[]) {
+  const byKey = new Map<string, any>();
+  for (const row of rows) {
+    const phoneKey = normalizePhone(row.phone);
+    const key = phoneKey || `id:${row.id}`;
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, row);
+      continue;
+    }
+    const prevTs = Date.parse(prev._submittedAtRaw || prev.submitted_at || 0) || 0;
+    const nextTs = Date.parse(row._submittedAtRaw || row.submitted_at || 0) || 0;
+    if (nextTs >= prevTs) byKey.set(key, row);
+  }
+  return Array.from(byKey.values()).map(({ _submittedAtRaw, ...rest }) => rest);
+}
+
 export async function GET() {
   const localList = readLocalRegistrations();
 
@@ -39,7 +61,12 @@ export async function GET() {
       .order('submitted_at', { ascending: false });
 
     if (!error && Array.isArray(kycRows)) {
-      supabaseKycList = kycRows.map((row) => ({
+      // Dedupe Supabase rows first — same phone can have pending + rejected duplicates
+      const uniqueKyc = dedupeRegistrations(
+        kycRows.map((row) => ({ ...row, _submittedAtRaw: row.submitted_at }))
+      );
+
+      supabaseKycList = uniqueKyc.map((row) => ({
         id: row.id,
         role: row.role || 'delivery',
         name: row.name,
@@ -49,10 +76,13 @@ export async function GET() {
         councilRegNo: row.council_reg_no || '',
         qualification: row.qualification || '',
         vehicleType: 'Electric Bike',
-        vehicleNumber: '',
+        vehicleNumber: row.council_reg_no || '',
         zone: 'Central Hub',
         status: row.status === 'verified' ? 'active' : row.status === 'rejected' ? 'rejected' : 'pending_approval',
-        submittedAt: row.submitted_at ? new Date(row.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+        submittedAt: row.submitted_at
+          ? new Date(row.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'Recently',
+        _submittedAtRaw: row.submitted_at,
         documents: Array.isArray(row.documents) ? row.documents : ['Identity Document', 'Driving License'],
       }));
     }
@@ -60,16 +90,11 @@ export async function GET() {
     console.warn('Could not query Supabase in registrations GET:', err);
   }
 
-  // Merge unique by id or phone
-  const combined = [...localList];
-  supabaseKycList.forEach((supItem) => {
-    const exists = combined.some(
-      (c) => c.id === supItem.id || (c.phone && supItem.phone && c.phone === supItem.phone)
-    );
-    if (!exists) {
-      combined.unshift(supItem);
-    }
-  });
+  // Prefer Supabase (source of truth) over local file when phone/id collide
+  const combined = dedupeRegistrations([
+    ...supabaseKycList,
+    ...localList.map((r) => ({ ...r, _submittedAtRaw: r.submittedAt || r.submitted_at })),
+  ]);
 
   return NextResponse.json({ success: true, data: combined });
 }

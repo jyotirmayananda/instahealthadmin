@@ -296,24 +296,31 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
               });
             } else if (reg.role === 'delivery') {
               setRiders((prev) => {
+                const phoneDigits = String(reg.phone || '').replace(/\D/g, '').slice(-10);
                 const exists = prev.find(
-                  (r) => r.id === reg.id || (reg.phone && r.phone === reg.phone) || r.name === reg.name
+                  (r) =>
+                    r.id === reg.id ||
+                    (phoneDigits && String(r.phone || '').replace(/\D/g, '').slice(-10) === phoneDigits) ||
+                    r.name === reg.name
                 );
+                const riderStatus: RiderStatus =
+                  reg.status === 'active' || reg.status === 'available'
+                    ? 'available'
+                    : reg.status === 'rejected'
+                    ? 'offline'
+                    : 'pending_approval';
                 if (exists) {
                   return prev.map((r) =>
                     r.id === exists.id
                       ? {
                           ...r,
-                          status:
-                            reg.status === 'active' || reg.status === 'available'
-                              ? 'available'
-                              : reg.status === 'rejected'
-                              ? 'offline'
-                              : r.status,
+                          status: riderStatus,
                         }
                       : r
                   );
                 }
+                // Don't invent alert cards for already-rejected applicants
+                if (riderStatus === 'offline') return prev;
                 return [
                   {
                     id: reg.id,
@@ -321,13 +328,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
                     phone: reg.phone,
                     email: reg.email,
                     drivingLicense: reg.councilRegNo || 'DL-PENDING',
-                    vehicleNumber: reg.vehicleNumber || 'DL-01-EXP-001',
+                    vehicleNumber: reg.vehicleNumber || reg.councilRegNo || 'Pending RC',
                     vehicleType: reg.vehicleType || 'Electric Bike',
                     currentZone: reg.zone || 'Sector 62 / Indirapuram Corridor',
-                    status:
-                      reg.status === 'active' || reg.status === 'available'
-                        ? 'available'
-                        : 'pending_approval',
+                    status: riderStatus,
                     battery: 100,
                     rating: 5.0,
                     activeOrdersCount: 0,
@@ -368,6 +372,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. Direct Supabase Query for Provider KYC (including Delivery Partners)
+      // Dedupe by phone — duplicate pending+rejected rows used to flip Ops Alerts every poll.
       try {
         const { data: kycRows } = await supabase
           .from('provider_kyc')
@@ -375,30 +380,57 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           .order('submitted_at', { ascending: false });
 
         if (kycRows && Array.isArray(kycRows)) {
+          const normalizePhone = (phone?: string | null) =>
+            String(phone || '').replace(/\D/g, '').slice(-10);
+          const latestByPhone = new Map<string, (typeof kycRows)[number]>();
           kycRows.forEach((row) => {
-            if (row.role === 'delivery') {
-              setRiders((prev) => {
-                const exists = prev.find((r) => r.id === row.id || (row.phone && r.phone === row.phone));
-                const riderStatus =
-                  row.status === 'verified'
-                    ? 'available'
-                    : row.status === 'rejected'
-                    ? 'offline'
-                    : 'pending_approval';
+            if (row.role !== 'delivery') return;
+            const key = normalizePhone(row.phone) || `id:${row.id}`;
+            if (!latestByPhone.has(key)) latestByPhone.set(key, row);
+          });
 
-                if (exists) {
-                  return prev.map((r) => (r.id === exists.id ? { ...r, status: riderStatus } : r));
-                }
-                return [
+          setRiders((prev) => {
+            let next = [...prev];
+            latestByPhone.forEach((row) => {
+              const phoneKey = normalizePhone(row.phone);
+              const exists = next.find(
+                (r) =>
+                  r.id === row.id ||
+                  (phoneKey && normalizePhone(r.phone) === phoneKey)
+              );
+              const riderStatus: RiderStatus =
+                row.status === 'verified'
+                  ? 'available'
+                  : row.status === 'rejected'
+                  ? 'offline'
+                  : 'pending_approval';
+
+              if (exists) {
+                next = next.map((r) =>
+                  r.id === exists.id
+                    ? {
+                        ...r,
+                        id: row.id,
+                        name: row.name || r.name,
+                        phone: row.phone || r.phone,
+                        status: riderStatus,
+                        drivingLicense: row.council_reg_no || r.drivingLicense,
+                        documents: Array.isArray(row.documents) ? row.documents : r.documents,
+                      }
+                    : r
+                );
+              } else if (riderStatus === 'pending_approval') {
+                // Only surface genuinely pending applicants as new rider cards
+                next = [
                   {
                     id: row.id,
                     name: row.name,
                     phone: row.phone || '',
                     email: row.email,
                     drivingLicense: row.council_reg_no || 'DL-PENDING',
-                    vehicleNumber: 'UP-16-EV-9011',
+                    vehicleNumber: row.council_reg_no || 'Pending RC',
                     vehicleType: 'Electric Bike',
-                    currentZone: 'Sector 62 / Indirapuram Corridor',
+                    currentZone: 'Central Hub',
                     status: riderStatus,
                     battery: 100,
                     rating: 5.0,
@@ -406,10 +438,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
                     joinedAt: 'Recently',
                     documents: Array.isArray(row.documents) ? row.documents : ['Driving License'],
                   },
-                  ...prev,
+                  ...next,
                 ];
-              });
-            }
+              }
+            });
+            return next;
           });
         }
       } catch (err) {
@@ -420,29 +453,37 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: fleetRows } = await supabase.from('fleet_staff').select('*');
         if (fleetRows && Array.isArray(fleetRows)) {
-          fleetRows.forEach((fl) => {
-            if (fl.role === 'delivery') {
-              setRiders((prev) => {
-                const exists = prev.find((r) => r.id === fl.id || (fl.phone && r.phone === fl.phone));
-                if (exists) return prev;
-                return [
-                  {
-                    id: fl.id,
-                    name: fl.name,
-                    phone: fl.phone || '',
-                    vehicleNumber: 'UP-16-BW-4921',
-                    vehicleType: 'Electric Bike',
-                    currentZone: fl.current_zone || 'Sector 62',
-                    status: fl.status === 'pending_approval' ? 'pending_approval' : 'available',
-                    battery: fl.battery_percent || 100,
-                    rating: Number(fl.rating || 5.0),
-                    activeOrdersCount: 0,
-                    joinedAt: 'Active Staff',
-                  },
-                  ...prev,
-                ];
-              });
-            }
+          const normalizePhone = (phone?: string | null) =>
+            String(phone || '').replace(/\D/g, '').slice(-10);
+          setRiders((prev) => {
+            let next = [...prev];
+            fleetRows.forEach((fl) => {
+              if (fl.role !== 'delivery') return;
+              const phoneKey = normalizePhone(fl.phone);
+              const exists = next.find(
+                (r) => r.id === fl.id || (phoneKey && normalizePhone(r.phone) === phoneKey)
+              );
+              if (exists) return;
+              // Skip fleet rows for rejected KYC — don't resurrect offline applicants as "available"
+              if (fl.status === 'offline' || fl.kyc_status === 'rejected') return;
+              next = [
+                {
+                  id: fl.id,
+                  name: fl.name,
+                  phone: fl.phone || '',
+                  vehicleNumber: fl.council_reg_no || 'Pending RC',
+                  vehicleType: 'Electric Bike',
+                  currentZone: fl.current_zone || 'Sector 62',
+                  status: fl.status === 'pending_approval' ? 'pending_approval' : 'available',
+                  battery: fl.battery_percent || 100,
+                  rating: Number(fl.rating || 5.0),
+                  activeOrdersCount: 0,
+                  joinedAt: 'Active Staff',
+                },
+                ...next,
+              ];
+            });
+            return next;
           });
         }
       } catch (err) {
