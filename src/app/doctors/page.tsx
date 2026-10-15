@@ -401,7 +401,7 @@ export default function DoctorsPage() {
                   isActive
                     ? 'border-slate-200/80 hover:border-slate-300'
                     : isPending
-                    ? 'border-amber-300 bg-amber-50/20'
+                    ? 'border-[#184575]'
                     : 'border-rose-300 bg-rose-50/20'
                 }`}
               >

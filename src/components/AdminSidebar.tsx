@@ -76,13 +76,13 @@ export default function AdminSidebar({
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-teal-400 text-white flex items-center justify-center font-black text-base shadow-sm shadow-teal-500/20">
+          <div className="w-10 h-10 rounded-xl bg-[#184575] text-white flex items-center justify-center font-black text-base">
             <Activity size={20} className="stroke-[2.5]" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-black text-slate-900 tracking-tight">INSTAHEALTH</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
+              <span className="text-[9px] font-bold text-[#184575]">
                 PRO
               </span>
             </div>
@@ -121,14 +121,14 @@ export default function AdminSidebar({
                     onClick={onClose}
                     className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                       isActive
-                        ? 'bg-teal-50 text-teal-800 font-bold border border-teal-200/70 shadow-xs'
+                        ? 'bg-[#184575] text-white font-bold'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
                     <span className="flex items-center gap-2.5">
                       <Icon
                         size={16}
-                        className={isActive ? 'text-teal-600 stroke-[2.2]' : 'text-slate-400 stroke-[1.8]'}
+                        className={isActive ? 'text-white stroke-[2.2]' : 'text-slate-400 stroke-[1.8]'}
                       />
                       <span>{item.label}</span>
                     </span>
@@ -136,7 +136,7 @@ export default function AdminSidebar({
                       <span
                         className={`min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center ${
                           isActive
-                            ? 'bg-teal-600 text-white'
+                            ? 'bg-white text-[#184575]'
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
@@ -154,7 +154,7 @@ export default function AdminSidebar({
       {/* Bottom Profile / Operational Hub Info */}
       <div className="p-3.5 border-t border-slate-100 bg-slate-50/50">
         <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-          <div className="relative w-9 h-9 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 flex items-center justify-center font-bold text-xs shrink-0">
+          <div className="relative w-9 h-9 rounded-xl bg-white text-[#184575] border border-slate-200 flex items-center justify-center font-bold text-xs shrink-0">
             <ShieldCheck size={18} />
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
           </div>

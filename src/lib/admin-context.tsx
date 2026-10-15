@@ -215,9 +215,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   // Sync registrations & live data from Supabase + Backend + Admin API
   useEffect(() => {
     let isSubscribed = true;
+    let syncPass = 0;
 
     async function syncAllData() {
       if (!isSubscribed) return;
+      syncPass += 1;
+      const isInitial = syncPass === 1;
 
       // 1. Sync from Admin Registrations API (which combines local and Supabase)
       try {
@@ -341,26 +344,27 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         // Handled silently
       }
 
-      // 1b. Fetch Centralized Consultation Pricing
-      try {
-        const pRes = await fetch('/api/consultation-pricing');
-        const pJson = await pRes.json();
-        if (pJson.success && pJson.data) {
-          setConsultationPricing(pJson.data);
+      // Pricing & Rx change rarely — load on first pass, then every ~60s
+      if (isInitial || syncPass % 4 === 0) {
+        try {
+          const pRes = await fetch('/api/consultation-pricing');
+          const pJson = await pRes.json();
+          if (pJson.success && pJson.data) {
+            setConsultationPricing(pJson.data);
+          }
+        } catch (err) {
+          // Silent fallback
         }
-      } catch (err) {
-        // Silent fallback
-      }
 
-      // 1c. Fetch Centralized Prescriptions
-      try {
-        const rxRes = await fetch('/api/prescriptions');
-        const rxJson = await rxRes.json();
-        if (rxJson.success && Array.isArray(rxJson.data) && rxJson.data.length > 0) {
-          setPrescriptions(rxJson.data);
+        try {
+          const rxRes = await fetch('/api/prescriptions');
+          const rxJson = await rxRes.json();
+          if (rxJson.success && Array.isArray(rxJson.data) && rxJson.data.length > 0) {
+            setPrescriptions(rxJson.data);
+          }
+        } catch (err) {
+          // Silent fallback
         }
-      } catch (err) {
-        // Silent fallback
       }
 
       // 2. Direct Supabase Query for Provider KYC (including Delivery Partners)
@@ -678,8 +682,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     // Initial sync
     syncAllData();
 
-    // Fast polling every 3 seconds for live sync
-    const interval = setInterval(syncAllData, 3000);
+    // Poll every 15s — registrations / pricing / Rx don't need 3s churn
+    const interval = setInterval(syncAllData, 15000);
 
     // Supabase Realtime channel subscription
     let channel: any = null;

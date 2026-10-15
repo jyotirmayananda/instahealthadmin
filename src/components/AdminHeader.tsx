@@ -267,7 +267,7 @@ export default function AdminHeader({ onMenu }: { onMenu?: () => void }) {
         </button>
 
         {/* Global Quick Search */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 w-60 lg:w-72 text-xs text-slate-400 focus-within:border-teal-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-teal-500/20 transition">
+        <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 w-60 lg:w-72 text-xs text-slate-400 focus-within:border-[#184575] focus-within:ring-2 focus-within:ring-[#184575]/15 transition">
           <Search size={14} className="text-slate-400 shrink-0" />
           <input
             type="text"
@@ -290,7 +290,7 @@ export default function AdminHeader({ onMenu }: { onMenu?: () => void }) {
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-xs font-medium text-slate-700 transition shadow-xs"
             title="Click to switch operating hub or auto-detect current location"
           >
-            <MapPin size={14} className="text-teal-600 shrink-0" />
+            <MapPin size={14} className="text-[#184575] shrink-0" />
             <span className="max-w-[140px] sm:max-w-[180px] truncate">{currentHub}</span>
             <ChevronDown size={12} className="text-slate-400 shrink-0 ml-0.5" />
           </button>
@@ -300,7 +300,7 @@ export default function AdminHeader({ onMenu }: { onMenu?: () => void }) {
             <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl border border-slate-200 shadow-xl p-3.5 space-y-3 z-50 animate-in fade-in zoom-in-95 duration-100">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-1.5">
-                  <Building2 size={14} className="text-teal-600" />
+                  <Building2 size={14} className="text-[#184575]" />
                   <span className="text-xs font-bold text-slate-900">Select Operating Hub</span>
                 </div>
                 <button
@@ -315,16 +315,16 @@ export default function AdminHeader({ onMenu }: { onMenu?: () => void }) {
               <button
                 onClick={detectCurrentLocation}
                 disabled={isDetectingLocation}
-                className="w-full py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition flex items-center justify-center gap-2 border border-teal-200 shadow-xs"
+                className="w-full py-2 px-3 rounded-xl bg-[#184575] hover:bg-[#123357] text-white text-xs font-bold transition flex items-center justify-center gap-2"
               >
                 {isDetectingLocation ? (
                   <>
-                    <RefreshCw size={13} className="animate-spin text-teal-600" />
+                    <RefreshCw size={13} className="animate-spin text-white" />
                     <span>Detecting GPS Location…</span>
                   </>
                 ) : (
                   <>
-                    <LocateFixed size={13} className="text-teal-600" />
+                    <LocateFixed size={13} className="text-white" />
                     <span>Detect My Current Location</span>
                   </>
                 )}

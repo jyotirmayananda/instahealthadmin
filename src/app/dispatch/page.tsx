@@ -452,18 +452,12 @@ export default function DispatchPage() {
               <div
                 key={person.id}
                 className={`bg-white border rounded-3xl p-5 space-y-4 hover:border-slate-300 hover:shadow-card-hover transition shadow-card ${
-                  isPending ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200/80'
+                  isPending ? 'border-[#184575]' : 'border-slate-200'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div
-                      className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm ${
-                        person.isRider
-                          ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                          : 'bg-teal-50 text-teal-700 border border-teal-200'
-                      }`}
-                    >
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm bg-white text-[#184575] border border-slate-200">
                       {person.isRider ? <Bike size={20} /> : person.name.charAt(0)}
                     </div>
                     <div>
@@ -477,7 +471,7 @@ export default function DispatchPage() {
                         </p>
                       )}
                       {person.drivingLicense && (
-                        <p className="text-[10px] font-mono font-semibold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded border border-amber-200 mt-1 inline-block">
+                        <p className="text-[10px] font-mono font-semibold text-[#184575] mt-1">
                           License: {person.drivingLicense}
                         </p>
                       )}
@@ -486,10 +480,10 @@ export default function DispatchPage() {
                   <StatusBadge value={person.status} />
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/70 space-y-1.5 text-xs">
+                <div className="p-3 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="flex items-center gap-1.5 font-medium">
-                      <MapPin size={13} className="text-teal-600" /> {person.currentZone}
+                      <MapPin size={13} className="text-[#184575]" /> {person.currentZone}
                     </span>
                     <span className="font-mono text-emerald-600 font-semibold flex items-center gap-1">
                       <BatteryCharging size={13} />

@@ -141,7 +141,7 @@ export default function ProvidersKycPage() {
             <div
               key={req.id}
               className={`bg-white border rounded-3xl p-6 space-y-4 shadow-card hover:border-slate-300 hover:shadow-card-hover transition ${
-                req.status === 'pending' ? 'border-amber-300 bg-amber-50/10' : 'border-slate-200/80'
+                req.status === 'pending' ? 'border-[#184575]' : 'border-slate-200'
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
