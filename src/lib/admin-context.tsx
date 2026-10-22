@@ -294,6 +294,50 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
                   ...prev,
                 ];
               });
+            } else if (reg.role === 'pharmacist') {
+              setProviders((prev) => {
+                const phoneDigits = String(reg.phone || '').replace(/\D/g, '').slice(-10);
+                const exists = prev.find(
+                  (p) =>
+                    p.id === reg.id ||
+                    (reg.councilRegNo && p.councilRegNo === reg.councilRegNo) ||
+                    (phoneDigits && String(p.phone || '').replace(/\D/g, '').slice(-10) === phoneDigits && p.role === 'Pharmacist')
+                );
+                const kycStatus: 'pending' | 'verified' | 'rejected' =
+                  reg.status === 'active' || reg.status === 'verified'
+                    ? 'verified'
+                    : reg.status === 'rejected'
+                    ? 'rejected'
+                    : 'pending';
+                if (exists) {
+                  return prev.map((p) =>
+                    p.id === exists.id
+                      ? {
+                          ...p,
+                          status: kycStatus,
+                          name: reg.name || p.name,
+                          phone: reg.phone || p.phone,
+                          councilRegNo: reg.councilRegNo || p.councilRegNo,
+                          qualification: reg.qualification || p.qualification,
+                        }
+                      : p
+                  );
+                }
+                return [
+                  {
+                    id: reg.id,
+                    name: reg.name,
+                    role: 'Pharmacist',
+                    phone: reg.phone,
+                    councilRegNo: reg.councilRegNo || 'PCI-PENDING',
+                    qualification: reg.qualification || 'B.Pharm • Clinical Dispensing & Audit',
+                    submittedAt: reg.submittedAt || 'Today',
+                    status: kycStatus,
+                    documents: reg.documents || ['PCI Pharmacy License', 'B.Pharm Degree'],
+                  },
+                  ...prev,
+                ];
+              });
             } else if (reg.role === 'delivery') {
               setRiders((prev) => {
                 const phoneDigits = String(reg.phone || '').replace(/\D/g, '').slice(-10);
@@ -437,6 +481,57 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
                     activeOrdersCount: 0,
                     joinedAt: 'Recently',
                     documents: Array.isArray(row.documents) ? row.documents : ['Driving License'],
+                  },
+                  ...next,
+                ];
+              }
+            });
+            return next;
+          });
+
+          const latestPharmacists = new Map<string, (typeof kycRows)[number]>();
+          kycRows.forEach((row) => {
+            if (row.role !== 'pharmacist') return;
+            const key =
+              String(row.council_reg_no || '').trim().toLowerCase() ||
+              normalizePhone(row.phone) ||
+              `id:${row.id}`;
+            if (!latestPharmacists.has(key)) latestPharmacists.set(key, row);
+          });
+          setProviders((prev) => {
+            let next = [...prev];
+            latestPharmacists.forEach((row) => {
+              const phoneKey = normalizePhone(row.phone);
+              const exists = next.find(
+                (p) =>
+                  p.id === row.id ||
+                  (row.council_reg_no && p.councilRegNo === row.council_reg_no) ||
+                  (phoneKey &&
+                    String(p.phone || '').replace(/\D/g, '').slice(-10) === phoneKey &&
+                    p.role === 'Pharmacist')
+              );
+              const kycStatus: 'pending' | 'verified' | 'rejected' =
+                row.status === 'verified' || row.status === 'active'
+                  ? 'verified'
+                  : row.status === 'rejected'
+                  ? 'rejected'
+                  : 'pending';
+              if (exists) {
+                next = next.map((p) =>
+                  p.id === exists.id ? { ...p, status: kycStatus, name: row.name || p.name } : p
+                );
+              } else {
+                next = [
+                  {
+                    id: row.id,
+                    name: row.name,
+                    role: 'Pharmacist',
+                    phone: row.phone || '',
+                    councilRegNo: row.council_reg_no || 'PCI-PENDING',
+                    qualification: row.qualification || 'B.Pharm • Clinical Dispensing & Audit',
+                    submittedAt: 'Recently',
+                    status: kycStatus,
+                    documents: Array.isArray(row.documents) ? row.documents : ['PCI Pharmacy License', 'B.Pharm Degree'],
                   },
                   ...next,
                 ];
@@ -990,8 +1085,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       setCoupons((rows) => rows.map((r) => (r.id === id ? { ...r, active: !r.active } : r))),
     addCoupon: (item) =>
       setCoupons((rows) => [{ ...item, id: `cp_${Date.now()}` }, ...rows]),
-    setKycStatus: (id, status) =>
-      setProviders((rows) => rows.map((r) => (r.id === id ? { ...r, status } : r))),
+    setKycStatus: (id, status) => {
+      setProviders((rows) => rows.map((r) => (r.id === id ? { ...r, status } : r)));
+      fetch('/api/registrations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          status: status === 'verified' ? 'active' : status === 'rejected' ? 'rejected' : 'pending',
+        }),
+      }).catch(() => {});
+    },
     reassignFleet: (id, zone) =>
       setFleet((rows) => rows.map((r) => (r.id === id ? { ...r, currentZone: zone } : r))),
     setFleetStatus: (id, status) =>

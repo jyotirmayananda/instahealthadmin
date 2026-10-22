@@ -10,7 +10,7 @@ export default function ProvidersKycPage() {
   const { providers, setKycStatus, approveNurse, riders, approveRider, rejectRider } = useAdmin();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('pending');
-  const [roleTab, setRoleTab] = useState<'all' | 'clinical' | 'delivery'>('all');
+  const [roleTab, setRoleTab] = useState<'all' | 'clinical' | 'pharmacist' | 'delivery'>('all');
 
   // Unified list of applicants
   const allApplicants = useMemo(() => {
@@ -69,7 +69,8 @@ export default function ProvidersKycPage() {
         r.role.toLowerCase().includes(query.toLowerCase());
       if (!match) return false;
 
-      if (roleTab === 'clinical' && r.isRider) return false;
+      if (roleTab === 'clinical' && (r.isRider || r.role === 'Pharmacist')) return false;
+      if (roleTab === 'pharmacist' && r.role !== 'Pharmacist') return false;
       if (roleTab === 'delivery' && !r.isRider) return false;
 
       if (filter === 'all') return true;
@@ -81,7 +82,7 @@ export default function ProvidersKycPage() {
     <div className="space-y-6">
       <PageHeader
         title="Partner & Staff KYC Verification Desk"
-        subtitle="Review credentials and approve Delivery Partners, Nurses, and Clinical Staff before they go live on the field."
+        subtitle="Review credentials and approve pharmacists, nurses, and delivery partners the same way doctors are authorized."
         right={
           <div className="flex items-center gap-2">
             <Link
@@ -102,8 +103,9 @@ export default function ProvidersKycPage() {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
         {[
           { id: 'all', label: `All Applicants (${allApplicants.length})` },
+          { id: 'pharmacist', label: `Pharmacists (${providers.filter((p) => p.role === 'Pharmacist').length})` },
           { id: 'delivery', label: `Delivery Partners (${riders.length})` },
-          { id: 'clinical', label: `Clinical Nurses & Staff (${providers.length})` },
+          { id: 'clinical', label: `Clinical Nurses & Staff (${providers.filter((p) => p.role !== 'Pharmacist').length})` },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -233,7 +235,7 @@ export default function ProvidersKycPage() {
                       }
                     }}
                   >
-                    Approve &amp; Grant Field Access
+                    {req.role === 'Pharmacist' ? 'Approve & Authorize' : 'Approve & Grant Field Access'}
                   </ActionButton>
                 </div>
               )}

@@ -168,7 +168,7 @@ export default function AdminHeader({ onMenu }: { onMenu?: () => void }) {
         list.push({
           id: `notif_prov_${p.id}`,
           category: 'staff',
-          title: `Nurse & Staff KYC: ${p.name}`,
+          title: p.role === 'Pharmacist' ? `Pharmacist License Audit: ${p.name}` : `Nurse & Staff KYC: ${p.name}`,
           description: `${p.role} • Reg: ${p.councilRegNo}`,
           time: 'Pending Audit',
           href: '/providers',

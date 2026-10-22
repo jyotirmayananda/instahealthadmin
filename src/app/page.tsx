@@ -67,10 +67,13 @@ export default function AdminOverviewPage() {
       ...providers.filter((p) => p.status === 'pending').map((p) => ({
         id: `prov-${p.id}`,
         href: '/providers',
-        title: `Nurse & Staff KYC Verification: ${p.name}`,
+        title:
+          p.role === 'Pharmacist'
+            ? `Pharmacist License Audit: ${p.name}`
+            : `Nurse & Staff KYC Verification: ${p.name}`,
         detail: `${p.role} • Reg: ${p.councilRegNo}`,
         status: 'pending' as const,
-        tag: 'Nursing Staff KYC',
+        tag: p.role === 'Pharmacist' ? 'Pharmacist Onboarding' : 'Nursing Staff KYC',
       })),
       ...riders.filter((r) => r.status === 'pending_approval').map((r) => ({
         id: `rider-${r.id}`,
